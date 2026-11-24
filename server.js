@@ -1,45 +1,25 @@
-const express = require('express');
-const app = express();
-const dotenv = require('dotenv');
-const db = require('./model');
-const cors = require('cors');
-const authRoute = require('./routes/auth');
-const kelasRoute = require('./routes/kelas');
-const propsRoute = require('./routes/props');
-const { profile, update, destroy, token } = require('./routes/controlUser');
-const verifyToken = require('./routes/verifyToken');
-const refreshToken = require('./routes/refreshToken');
-const cookieParser = require('cookie-parser');
+/* eslint-disable no-console */
+const mongoose = require('mongoose');
+const app = require('./app');
+const config = require('./config/env');
+const { connect } = require('./config/db');
 
-dotenv.config();
-const dbConfig = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useFindAndModify: false,
-}
+module.exports = app;
 
-db.mongoose.connect(db.url, dbConfig)
-    .then(() => { console.log('Connected to the database!'); })
-    .catch(err => {
-        console.log('Cannot connect to the database!', err); process.exit();
+if (require.main === module) {
+  connect()
+    .then(() => {
+      const server = app.listen(config.port, () => {
+        console.log(`Server running on http://localhost:${config.port}`);
+      });
+      const shutdown = () => server.close(() => {
+        mongoose.disconnect().finally(() => process.exit(0));
+      });
+      process.on('SIGTERM', shutdown);
+      process.on('SIGINT', shutdown);
+    })
+    .catch((err) => {
+      console.error('Cannot connect to the database', err);
+      process.exit(1);
     });
-
-app.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Header", "*");
-    res.header("Access-Control-Allow-Methods", "*");
-    next();
-});
-app.use(cookieParser());
-app.use(express.json());
-app.use(cors());
-app.use('/api/user', authRoute);
-app.use('/api/kelas', kelasRoute);
-app.use('/api/props', propsRoute);
-app.get('/api/user/profile', verifyToken, profile);
-app.get('/api/user/refreshToken', refreshToken);
-
-exports.app = app;
-
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log('Server running on port: http://localhost:' + PORT));
+}

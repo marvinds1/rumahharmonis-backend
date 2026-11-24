@@ -1,36 +1,24 @@
 const router = require('express').Router();
-const kelasOnline = require('../model/kelasOnline');
+const KelasOnline = require('../model/kelasOnline');
+const validate = require('../middleware/validate');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
+const schemas = require('../utils/validation');
+const { createUnique } = require('../utils/createUnique');
 
 router.get('/getKelas', async (req, res) => {
-    try {
-        const kelas = await kelasOnline.find();
-        res.json(
-            kelas.map((kelas) => {
-                return {
-                    title: kelas.title,
-                    pathImg: kelas.pathImg
-                };
-            })
-        );
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json(await KelasOnline.find().select('title pathImg -_id').lean());
 });
 
-router.post('/addKelas', async (req, res) => {
-    const titleExist = await kelasOnline.findOne({ title: req.body.title });
-    if (titleExist) return res.status(400).send('Sudah ada kelas serupa');
-    const kelas = new kelasOnline({
-        title: req.body.title,
-        pathImg: req.body.pathImg
-    });
-    try {
-        const dbSavedKelas = await kelas.save();
-        res.send({ kelas: dbSavedKelas._id });
-    } catch (e) {
-        res.status(400).send(e);
-    }
-});
+router.post(
+  '/addKelas',
+  requireAuth,
+  requireAdmin,
+  validate(schemas.kelas),
+  async (req, res) => {
+    const kelas = await createUnique(KelasOnline, req.body, 'Sudah ada kelas serupa');
+    res.status(201).json({ kelas: kelas._id });
+  },
+);
 
 module.exports = router;

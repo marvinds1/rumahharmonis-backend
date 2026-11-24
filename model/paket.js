@@ -1,15 +1,13 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-const paketSchema = new Schema({
-    pathImg: { type: String, Required: true, max: 255 },
-    pic: { type: String, Required: true, max: 255 },
-    title: { type: String, Required: true, min: 5, max: 255 },
-    desc: { type: String, Required: true, min: 5, max: 255 },
-    price: { type: Number, Required: true },
-    isFav: { type: Boolean, default: false },
-    updateAt: { type: Date, default: Date.now },
-    createdAt: { type: Date, default: Date.now }
-});
+const paketSchema = new mongoose.Schema({
+  pathImg: { type: String, required: true, maxlength: 512 },
+  pic: { type: String, required: true, maxlength: 255 },
+  title: { type: String, required: true, maxlength: 255 },
+  desc: { type: String, required: true, maxlength: 255 },
+  price: { type: Number, required: true, min: 0 },
+  isFav: { type: Boolean, default: false },
+}, { timestamps: true });
+paketSchema.index({ title: 1, pic: 1 }, { unique: true });
 
 module.exports = mongoose.model('Paket', paketSchema);

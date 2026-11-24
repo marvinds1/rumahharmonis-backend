@@ -1,11 +1,10 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-const kelasOnline = new Schema({
-    title: { type: String, Required: true, min: 5, max: 255 },
-    pathImg: { type: String, Required: true, max: 255 },
-    updatedAt: { type: Date, default: Date.now },
-    createdAt: { type: Date, default: Date.now },
-});
+const kelasOnlineSchema = new mongoose.Schema({
+  title: {
+    type: String, required: true, unique: true, maxlength: 255,
+  },
+  pathImg: { type: String, required: true, maxlength: 512 },
+}, { timestamps: true });
 
-module.exports = mongoose.model('kelasOnline', kelasOnline);
+module.exports = mongoose.model('kelasOnline', kelasOnlineSchema);

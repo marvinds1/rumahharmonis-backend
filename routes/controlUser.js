@@ -1,48 +1,39 @@
+const router = require('express').Router();
 const User = require('../model/User');
+const validate = require('../middleware/validate');
+const { requireAuth } = require('../middleware/auth');
+const schemas = require('../utils/validation');
+const HttpError = require('../utils/httpError');
+const { cookieOptions, REFRESH_COOKIE } = require('../utils/cookies');
 
-const profile = async (req, res) => {
-    try {
+const publicProfile = ({ name, email, address }) => ({ name, email, address });
 
-        const user = await User.findOne({ refreshToken: req.cookies.refreshToken });
-        res.json({
-            name: user.name,
-            email: user.email,
-            address: user.address,
-            refreshToken: user.refreshToken
-        });
-    }
-    catch (err) {
-        console.error(err.message);
-    }
-}
+router.use('/profile', requireAuth);
 
-const update = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.name);
-        user.name = req.body.name;
-        user.email = req.body.email;
-        user.address = req.body.address;
-        await user.save();
-        res.json({
-            name: user.name,
-            email: user.email,
-            address: user.address,
-        });
-    }
-    catch (err) {
-        console.error(err.message);
-    }
-}
+router.get('/profile', (req, res) => {
+  res.json(publicProfile(req.user));
+});
 
-const destroy = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.name);
-        await user.remove();
-        res.json({ message: 'User deleted' });
-    }
-    catch (err) {
-        console.error(err.message);
-    }
-}
+router.put('/profile', validate(schemas.updateProfile), async (req, res) => {
+  let user;
+  try {
+    user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: req.body },
+      { returnDocument: 'after', runValidators: true },
+    );
+  } catch (err) {
+    if (err.code === 11000) throw new HttpError(409, 'Email address already exists');
+    throw err;
+  }
+  if (!user) throw new HttpError(401, 'Unauthorized');
+  res.json(publicProfile(user));
+});
 
-module.exports = { profile, update, destroy };
+router.delete('/profile', async (req, res) => {
+  await User.deleteOne({ _id: req.user._id });
+  res.clearCookie(REFRESH_COOKIE, cookieOptions);
+  res.json({ message: 'User deleted' });
+});
+
+module.exports = router;
